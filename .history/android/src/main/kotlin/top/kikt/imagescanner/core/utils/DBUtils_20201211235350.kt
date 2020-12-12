@@ -151,7 +151,7 @@ object DBUtils : IDBUtils {
     val list = ArrayList<AssetEntity>()
     val uri = allUri
 
-    var args = ArrayList<String>()
+    val args = ArrayList<String>()
     if (!isAll) {
       args.add(galleryId)
     }
@@ -162,7 +162,7 @@ object DBUtils : IDBUtils {
     val sizeWhere = sizeWhere(requestType, option)
 
     val keys = (storeImageKeys + storeVideoKeys + typeKeys + locationKeys).distinct().toTypedArray()
-    var selection = if (isAll) {
+    val selection = if (isAll) {
       "${MediaStore.Images.ImageColumns.BUCKET_ID} IS NOT NULL $typeSelection $dateSelection $sizeWhere"
     } else {
       "${MediaStore.Images.ImageColumns.BUCKET_ID} = ? $typeSelection $dateSelection $sizeWhere"
@@ -171,13 +171,6 @@ object DBUtils : IDBUtils {
     val sortOrder = getSortOrder(page * pageSize, pageSize, option)
     val cursor = context.contentResolver.query(uri, keys, selection, args.toTypedArray(), sortOrder)
         ?: return emptyList()
-
-    if(isAll) {
-      selection = "(" + MediaStore.Files.FileColumns.MEDIA_TYPE.toString() + "=?" + " OR " + MediaStore.Files.FileColumns.MEDIA_TYPE.toString() + "=?)" + " AND " + MediaStore.MediaColumns.SIZE.toString() + ">0"
-      args = arrayListOf<String>(java.lang.String.valueOf(MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE),
-              java.lang.String.valueOf(MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO))
-
-    }
 
     while (cursor.moveToNext()) {
       val asset = convertCursorToAsset(cursor, requestType)

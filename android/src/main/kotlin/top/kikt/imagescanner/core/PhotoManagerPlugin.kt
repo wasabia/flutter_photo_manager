@@ -77,6 +77,8 @@ class PhotoManagerPlugin(
   override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
     val resultHandler = ResultHandler(result, call)
 
+//    println(" call.method: ${call.method} ")
+
     if (call.method == "ignorePermissionCheck") {
       val ignore = call.argument<Boolean>("ignore")!!
       ignorePermissionCheck = ignore

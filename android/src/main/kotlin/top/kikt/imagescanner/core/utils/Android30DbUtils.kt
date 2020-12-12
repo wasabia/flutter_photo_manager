@@ -184,7 +184,7 @@ object Android30DbUtils : IDBUtils {
     val list = ArrayList<AssetEntity>()
     val uri = allUri
 
-    val args = ArrayList<String>()
+    var args = ArrayList<String>()
     if (!isAll) {
       args.add(gId)
     }
@@ -195,7 +195,7 @@ object Android30DbUtils : IDBUtils {
     val dateSelection = getDateCond(args, option)
 
     val keys = assetKeys().distinct().toTypedArray()
-    val selection = if (isAll) {
+    var selection = if (isAll) {
       "${MediaStore.Images.ImageColumns.BUCKET_ID} IS NOT NULL $typeSelection $dateSelection $sizeWhere"
     } else {
       "${MediaStore.Images.ImageColumns.BUCKET_ID} = ? $typeSelection $dateSelection $sizeWhere"
@@ -204,8 +204,19 @@ object Android30DbUtils : IDBUtils {
     val pageSize = end - start
 
     val sortOrder = getSortOrder(start, pageSize, option)
+
+
+    if(isAll) {
+      selection = "(" + MediaStore.Files.FileColumns.MEDIA_TYPE.toString() + "=?" + " OR " + MediaStore.Files.FileColumns.MEDIA_TYPE.toString() + "=?)" + " AND " + MediaStore.MediaColumns.SIZE.toString() + ">0"
+      args = arrayListOf<String>(java.lang.String.valueOf(MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE),
+              java.lang.String.valueOf(MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO))
+
+    }
+
     val cursor = context.contentResolver.query(uri, keys, selection, args.toTypedArray(), sortOrder)
         ?: return emptyList()
+
+
 
     cursorWithRange(cursor, start, pageSize) {
       val asset = convertCursorToAssetEntity(cursor)

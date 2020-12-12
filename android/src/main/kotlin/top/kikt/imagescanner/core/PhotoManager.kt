@@ -34,7 +34,11 @@ class PhotoManager(private val context: Context) {
 
   private val dbUtils: IDBUtils
     get() {
+
+//      println("Build.VERSION.SDK_INT: ${Build.VERSION.SDK_INT} ");
+
       return if (IDBUtils.isAndroidR) {
+
         Android30DbUtils
       } else if (useOldApi || Build.VERSION.SDK_INT < 29) {
         DBUtils
