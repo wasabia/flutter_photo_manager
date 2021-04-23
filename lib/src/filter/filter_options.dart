@@ -1,7 +1,4 @@
 import 'dart:convert';
-
-import 'package:flutter/foundation.dart';
-
 import '../type.dart';
 
 /// Filter option for get asset.
@@ -44,7 +41,7 @@ class FilterOptionGroup {
   );
 
   FilterOption getOption(AssetType type) {
-    return _map[type];
+    return _map[type]!;
   }
 
   void setOption(AssetType type, FilterOption option) {
@@ -60,7 +57,7 @@ class FilterOptionGroup {
   void merge(FilterOptionGroup other) {
     assert(other != null, 'Cannot merge null.');
     for (final AssetType type in _map.keys) {
-      _map[type] = _map[type]?.merge(other.getOption(type));
+      _map[type] = _map[type]!.merge(other.getOption(type));
     }
     this.containsEmptyAlbum = other.containsEmptyAlbum;
   }
@@ -68,13 +65,13 @@ class FilterOptionGroup {
   Map<String, dynamic> toMap() {
     Map<String, dynamic> result = {};
     if (_map.containsKey(AssetType.image)) {
-      result["image"] = _map[AssetType.image].toMap();
+      result["image"] = _map[AssetType.image]!.toMap();
     }
     if (_map.containsKey(AssetType.video)) {
-      result["video"] = _map[AssetType.video].toMap();
+      result["video"] = _map[AssetType.video]!.toMap();
     }
     if (_map.containsKey(AssetType.audio)) {
-      result["audio"] = _map[AssetType.audio].toMap();
+      result["audio"] = _map[AssetType.audio]!.toMap();
     }
 
     result["createDate"] = createTimeCond.toMap();
@@ -86,13 +83,13 @@ class FilterOptionGroup {
   }
 
   FilterOptionGroup copyWith({
-    FilterOption imageOption,
-    FilterOption videoOption,
-    FilterOption audioOption,
-    DateTimeCond createTimeCond,
-    DateTimeCond updateTimeCond,
-    bool containsEmptyAlbum,
-    List<OrderOption> orders,
+    FilterOption? imageOption,
+    FilterOption? videoOption,
+    FilterOption? audioOption,
+    DateTimeCond? createTimeCond,
+    DateTimeCond? updateTimeCond,
+    bool? containsEmptyAlbum,
+    List<OrderOption>? orders,
   }) {
     imageOption ??= _map[AssetType.image];
     videoOption ??= _map[AssetType.video];
@@ -107,9 +104,9 @@ class FilterOptionGroup {
 
     final result = FilterOptionGroup();
 
-    result.setOption(AssetType.image, imageOption);
-    result.setOption(AssetType.video, videoOption);
-    result.setOption(AssetType.audio, audioOption);
+    result.setOption(AssetType.image, imageOption!);
+    result.setOption(AssetType.video, videoOption!);
+    result.setOption(AssetType.audio, audioOption!);
 
     result.createTimeCond = createTimeCond;
     result.updateTimeCond = updateTimeCond;
@@ -139,19 +136,19 @@ class FilterOption {
   });
 
   /// This property affects performance on iOS. If not needed, please pass false, default is false.
-  final bool needTitle;
+  final bool? needTitle;
 
   /// See [SizeConstraint]
-  final SizeConstraint sizeConstraint;
+  final SizeConstraint? sizeConstraint;
 
   /// See [DurationConstraint], ignore in [AssetType.image].
-  final DurationConstraint durationConstraint;
+  final DurationConstraint? durationConstraint;
 
   /// Create a new [FilterOption] with specific properties merging.
   FilterOption copyWith({
-    bool needTitle,
-    SizeConstraint sizeConstraint,
-    DurationConstraint durationConstraint,
+    bool? needTitle,
+    SizeConstraint? sizeConstraint,
+    DurationConstraint? durationConstraint,
   }) {
     return FilterOption(
       needTitle: needTitle ?? this.needTitle,
@@ -173,8 +170,8 @@ class FilterOption {
   Map<String, dynamic> toMap() {
     return {
       "title": needTitle,
-      "size": sizeConstraint.toMap(),
-      "duration": durationConstraint.toMap(),
+      "size": sizeConstraint!.toMap(),
+      "duration": durationConstraint!.toMap(),
     };
   }
 
@@ -203,16 +200,16 @@ class SizeConstraint {
   });
 
   SizeConstraint copyWith({
-    int minWidth,
-    int maxWidth,
-    int minHeight,
-    int maxHeight,
-    bool ignoreSize,
+    int? minWidth,
+    int? maxWidth,
+    int? minHeight,
+    int? maxHeight,
+    bool? ignoreSize,
   }) {
     minWidth ??= this.minWidth;
     maxWidth ??= this.maxHeight;
 
-    maxWidth ??= this.maxHeight;
+    minHeight ??= this.minHeight;
     maxHeight ??= this.maxHeight;
 
     ignoreSize ??= this.ignoreSize;
@@ -266,8 +263,8 @@ class DateTimeCond {
   final bool ignore;
 
   const DateTimeCond({
-    @required this.min,
-    @required this.max,
+    required this.min,
+    required this.max,
     this.ignore = false,
   })  : assert(min != null),
         assert(max != null);
@@ -280,9 +277,9 @@ class DateTimeCond {
   }
 
   DateTimeCond copyWith({
-    final DateTime min,
-    final DateTime max,
-    final bool ignore,
+    final DateTime? min,
+    final DateTime? max,
+    final bool? ignore,
   }) {
     return DateTimeCond(
       min: min ?? this.min,
@@ -310,8 +307,8 @@ class OrderOption {
   });
 
   OrderOption copyWith({
-    OrderOptionType type,
-    bool asc,
+    OrderOptionType? type,
+    bool? asc,
   }) {
     return OrderOption(
       asc: asc ?? this.asc,

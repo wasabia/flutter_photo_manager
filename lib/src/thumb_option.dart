@@ -9,15 +9,15 @@ class ThumbOption {
   final int quality;
 
   const ThumbOption({
-    @required this.width,
-    @required this.height,
+    required this.width,
+    required this.height,
     this.format = ThumbFormat.jpeg,
     this.quality = 95,
   });
 
   factory ThumbOption.ios({
-    @required int width,
-    @required int height,
+    required int width,
+    required int height,
     ThumbFormat format = ThumbFormat.jpeg,
     int quality = 95,
     DeliveryMode deliveryMode = DeliveryMode.opportunistic,
@@ -63,13 +63,13 @@ class _IosThumbOption extends ThumbOption {
   final ResizeContentMode resizeContentMode;
 
   _IosThumbOption({
-    @required int width,
-    @required int height,
+    required int width,
+    required int height,
     ThumbFormat format = ThumbFormat.jpeg,
     int quality = 95,
-    this.deliveryMode,
-    this.resizeMode,
-    this.resizeContentMode,
+    required this.deliveryMode,
+    required this.resizeMode,
+    required this.resizeContentMode,
   }) : super(
           width: width,
           height: height,

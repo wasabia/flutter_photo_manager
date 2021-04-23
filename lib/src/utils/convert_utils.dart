@@ -4,16 +4,15 @@ class ConvertUtils {
   static List<AssetPathEntity> convertPath(
     Map data, {
     int type = 0,
-    DateTime dt,
-    FilterOptionGroup optionGroup,
+    DateTime? dt,
+    FilterOptionGroup? optionGroup,
   }) {
     List<AssetPathEntity> result = [];
 
     List list = data["data"];
 
     for (final Map item in list) {
-      final entity = AssetPathEntity(filterOption: optionGroup)
-        ..id = item["id"]
+      final entity = AssetPathEntity(id: item["id"], filterOption: optionGroup)
         ..name = item["name"]
         ..typeInt = type
         ..isAll = item["isAll"]
@@ -31,8 +30,7 @@ class ConvertUtils {
 
     List list = data["data"];
     for (final Map item in list) {
-      final entity = AssetEntity()
-        ..id = item["id"]
+      final entity = AssetEntity(id: item["id"])
         ..createDtSecond = item["createDt"]
         ..width = item["width"]
         ..height = item["height"]
@@ -51,7 +49,7 @@ class ConvertUtils {
     return result;
   }
 
-  static AssetEntity convertToAsset(Map map) {
+  static AssetEntity? convertToAsset(Map map) {
     if (map == null) {
       return null;
     }

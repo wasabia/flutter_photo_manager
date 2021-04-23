@@ -4,9 +4,9 @@ part of '../photo_manager.dart';
 class AssetPathEntity {
   /// Obtained by [AssetPathEntity.id], not recommended
   static Future<AssetPathEntity> fromId(String id,
-      {FilterOptionGroup filterOption}) async {
+      {FilterOptionGroup? filterOption}) async {
     filterOption ??= FilterOptionGroup();
-    final entity = AssetPathEntity()..id = id;
+    final entity = AssetPathEntity(id: id);
     await entity.refreshPathProperties();
     return entity;
   }
@@ -16,27 +16,27 @@ class AssetPathEntity {
   /// in ios is localIdentifier
   ///
   /// in android is content provider database _id column
-  String id;
+  late String id;
 
   /// name
   ///
   /// in android is path name
   ///
   /// in ios is photos gallery name
-  String name;
+  String? name;
 
   /// gallery asset count
-  int assetCount;
+  int? assetCount;
 
   /// In iOS: 1: album, 2: folder
   ///
   /// In android: always 1.
-  int albumType;
+  late int albumType;
 
   /// path asset type.
-  RequestType _type;
+  late RequestType _type;
 
-  FilterOptionGroup filterOption;
+  FilterOptionGroup? filterOption;
 
   /// The value used internally by the user.
   /// Used to indicate the value that should be available inside the path.
@@ -62,16 +62,16 @@ class AssetPathEntity {
   /// This path is the path that contains all the assets.
   bool isAll = false;
 
-  AssetPathEntity({this.id, this.name, this.filterOption});
+  AssetPathEntity({required this.id, this.name, this.filterOption});
 
   /// Call this method to update the property
   Future<void> refreshPathProperties({
-    FilterOptionGroup filterOptionGroup,
+    FilterOptionGroup? filterOptionGroup,
     bool maxDateTimeToNow = true,
   }) async {
     assert(maxDateTimeToNow != null);
 
-    filterOptionGroup ??= this.filterOption.copyWith();
+    filterOptionGroup ??= this.filterOption!.copyWith();
 
     if (maxDateTimeToNow) {
       filterOptionGroup = filterOptionGroup.copyWith(
@@ -113,7 +113,7 @@ class AssetPathEntity {
   }
 
   /// The [start] and [end] like the [String.substring].
-  Future<List<AssetEntity>> getAssetListRange({int start, int end}) async {
+  Future<List<AssetEntity>> getAssetListRange({required int start, required int end}) async {
     assert(this.albumType == 1, "Just album type can get asset.");
     assert(start >= 0, "The start must better than 0.");
     assert(end > start, "The end must better than start.");
@@ -122,7 +122,7 @@ class AssetPathEntity {
   }
 
   /// all of asset, It is recommended to use the latest api (pagination) [getAssetListPaged].
-  Future<List<AssetEntity>> get assetList => getAssetListPaged(0, assetCount);
+  Future<List<AssetEntity>> get assetList => getAssetListPaged(0, assetCount!);
 
   /// In android, always return empty list.
   Future<List<AssetPathEntity>> getSubPathList() async {
@@ -154,7 +154,7 @@ class AssetPathEntity {
 /// Used to describe a picture or video
 class AssetEntity {
   /// Create from [AssetEntity.id], not recommended.
-  static Future<AssetEntity> fromId(String id) async {
+  static Future<AssetEntity?> fromId(String id) async {
     final entity = AssetEntity();
     entity.id = id;
     try {
@@ -171,19 +171,19 @@ class AssetEntity {
   /// in android is database _id column
   ///
   /// in ios is local id
-  String id;
+  String? id;
 
   /// It is title `MediaStore.MediaColumns.DISPLAY_NAME` in MediaStore on android.
   ///
   /// It is `PHAssetResource.filename` on iOS.
   ///
   /// Nullable in iOS. If you must need it, See [FilterOption.needTitle] or use [titleAsync].
-  String title;
+  String? title;
 
   /// It is [title] in Android.
   ///
   /// It is [PHAsset valueForKey:@"filename"] in iOS.
-  Future<String> get titleAsync => _plugin.getTitleAsync(this);
+  Future<String?> get titleAsync => _plugin.getTitleAsync(this);
 
   /// see [id]
   AssetEntity({this.id});
@@ -207,25 +207,25 @@ class AssetEntity {
   /// Asset type int value.
   ///
   /// see [type]
-  int typeInt;
+  late int typeInt;
 
   /// Duration of video, unit is second.
   ///
   /// If [type] is [AssetType.image], then it's value is 0.
   ///
   /// Also see [videoDuration]
-  int duration;
+  int? duration;
 
   /// width of asset.
-  int width;
+  late int width;
 
   /// height of asset.
-  int height;
+  late int height;
 
   /// Gps information when shooting, nullable.
   ///
   /// When the device is android10 or above, always null.
-  double _latitude;
+  double? _latitude;
 
   /// Gps information when shooting, nullable.
   ///
@@ -242,7 +242,7 @@ class AssetEntity {
   /// Gps information when shooting, nullable.
   ///
   /// When the device is android10 or above, always null.
-  double _longitude;
+  double? _longitude;
 
   /// Gps information when shooting, nullable.
   ///
@@ -266,13 +266,13 @@ class AssetEntity {
   }
 
   /// if you need upload file ,then you can use the file, nullable.
-  Future<File> get file async => PhotoManager._getFileWithId(this.id);
+  Future<File?> get file async => PhotoManager._getFileWithId(this.id!);
 
   /// This contains all the EXIF information, but in contrast, `Image` widget may not be able to display pictures.
   ///
   /// Usually, you can use the [file] attribute
-  Future<File> get originFile async =>
-      PhotoManager._getFileWithId(id, isOrigin: true);
+  Future<File?> get originFile async =>
+      PhotoManager._getFileWithId(id!, isOrigin: true);
 
   /// The asset's bytes.
   ///
@@ -280,18 +280,18 @@ class AssetEntity {
   ///
   /// The property will be remove in 0.5.0.
   @Deprecated("Use originBytes instead")
-  Future<Uint8List> get fullData => PhotoManager._getFullDataWithId(id);
+  Future<Uint8List?> get fullData => PhotoManager._getFullDataWithId(id!);
 
   /// The raw data stored in the device, the data may be large.
   ///
   /// This property is not recommended for video types.
-  Future<Uint8List> get originBytes => PhotoManager._getOriginBytes(this);
+  Future<Uint8List?> get originBytes => PhotoManager._getOriginBytes(this);
 
   /// thumb data , for display
-  Future<Uint8List> get thumbData => thumbDataWithSize(150, 150);
+  Future<Uint8List?> get thumbData => thumbDataWithSize(150, 150);
 
   /// get thumb with size
-  Future<Uint8List> thumbDataWithSize(
+  Future<Uint8List?> thumbDataWithSize(
     int width,
     int height, {
     ThumbFormat format = ThumbFormat.jpeg,
@@ -303,7 +303,7 @@ class AssetEntity {
 
     /// Return null if asset is audio or other type, because they don't have such a thing.
     if (type == AssetType.audio || type == AssetType.other) {
-      return null;
+      return Future.sync(() => null);
     }
 
     return thumbDataWithOption(
@@ -317,7 +317,7 @@ class AssetEntity {
   }
 
   /// get thumb with size
-  Future<Uint8List> thumbDataWithOption(
+  Future<Uint8List?> thumbDataWithOption(
     ThumbOption option,
   ) {
     assert(() {
@@ -327,11 +327,11 @@ class AssetEntity {
 
     /// Return null if asset is audio or other type, because they don't have such a thing.
     if (type == AssetType.audio || type == AssetType.other) {
-      return null;
+      return Future.sync(() => null);
     }
 
     return PhotoManager._getThumbDataWithOption(
-      id,
+      id!,
       option,
     );
   }
@@ -343,7 +343,7 @@ class AssetEntity {
   Size get size => Size(width.toDouble(), height.toDouble());
 
   /// unix timestamp of asset, milliseconds
-  int createDtSecond;
+  int? createDtSecond;
 
   /// create time of asset
   DateTime get createDateTime {
@@ -352,7 +352,7 @@ class AssetEntity {
   }
 
   /// second of modified.
-  int modifiedDateSecond;
+  int? modifiedDateSecond;
 
   DateTime get modifiedDateTime {
     final sec = modifiedDateSecond ?? 0;
@@ -360,41 +360,41 @@ class AssetEntity {
   }
 
   /// If the asset is deleted, return false.
-  Future<bool> get exists => PhotoManager._assetExistsWithId(id);
+  Future<bool?> get exists => PhotoManager._assetExistsWithId(id!);
 
   /// The url is provided to some video player. Such as [flutter_ijkplayer](https://pub.dev/packages/flutter_ijkplayer)
   ///
   /// It is such as `file:///var/mobile/Media/DCIM/118APPLE/IMG_8371.MOV` in iOS.
   ///
   /// Android: `content://media/external/video/media/894857`
-  Future<String> getMediaUrl() {
+  Future<String?> getMediaUrl() {
     if (type == AssetType.video || type == AssetType.audio) {
       return PhotoManager._getMediaUrl(this);
     }
 
-    return null;
+    return Future.sync(() => null);
   }
 
   /// Orientation of android MediaStore. See [ORIENTATION](https://developer.android.com/reference/android/provider/MediaStore.MediaColumns#ORIENTATION)
   /// Example values for android: 0 90 180 270
   ///
   /// The value always 0 in iOS.
-  int orientation;
+  late int orientation;
 
   /// Android does not have this field, so it is always false.
   ///
   /// In iOS, it is consistent with PHAsset.isFavorite. to change it, Use `PhotoManager.editor.iOS.favoriteAsset`, See [IosEditor.favoriteAsset]
-  bool isFavorite;
+  late bool isFavorite;
 
   /// In iOS, always null.
   ///
   /// In androidQ or higher: it is `MediaStore.MediaColumns.RELATIVE_PATH`.
   ///
   /// API 28 or lower: it is `MediaStore.MediaColumns.DATA` parent path.
-  String relativePath;
+  late String relativePath;
 
   /// refreshProperties
-  Future<AssetEntity> refreshProperties() async {
+  Future<AssetEntity?> refreshProperties() async {
     return PhotoManager.refreshAssetProperties(this);
   }
 
@@ -420,8 +420,8 @@ class AssetEntity {
 /// Longitude and latitude
 class LatLng {
   /// longitude
-  double longitude;
+  late double longitude;
 
   /// latitude
-  double latitude;
+  late double latitude;
 }
