@@ -196,7 +196,7 @@ class AssetEntity {
   /// in android is database _id column
   ///
   /// in ios is local id
-  String? id;
+  String id;
 
   /// It is title `MediaStore.MediaColumns.DISPLAY_NAME` in MediaStore on android.
   ///
@@ -236,7 +236,7 @@ class AssetEntity {
   /// If [type] is [AssetType.image], then it's value is 0.
   ///
   /// Also see [videoDuration]
-  int? duration;
+  int duration;
 
   /// width of asset.
   late int width;
