@@ -60,7 +60,11 @@ object DBUtils : IDBUtils {
       val id = cursor.getString(0)
       val name = cursor.getString(1) ?: ""
       val count = cursor.getInt(2)
-      list.add(GalleryEntity(id, name, count, 0))
+      val entity = GalleryEntity(id, name, count, 0)
+      if (option.containsPathModified) {
+        injectModifiedDate(context, entity)
+      }
+      list.add(entity)
     }
 
     cursor.close()
@@ -136,13 +140,13 @@ object DBUtils : IDBUtils {
 
   @SuppressLint("Recycle")
   override fun getAssetFromGalleryId(
-          context: Context,
-          galleryId: String,
-          page: Int,
-          pageSize: Int,
-          requestType: Int,
-          option: FilterOption,
-          cacheContainer: CacheContainer?
+      context: Context,
+      galleryId: String,
+      page: Int,
+      pageSize: Int,
+      requestType: Int,
+      option: FilterOption,
+      cacheContainer: CacheContainer?
   ): List<AssetEntity> {
     val cache = cacheContainer ?: this.cacheContainer
 
@@ -236,7 +240,7 @@ object DBUtils : IDBUtils {
   private fun convertCursorToAsset(cursor: Cursor, requestType: Int): AssetEntity {
     val id = cursor.getString(MediaStore.MediaColumns._ID)
     val path = cursor.getString(MediaStore.MediaColumns.DATA)
-    val date = cursor.getLong(MediaStore.Images.Media.DATE_TAKEN)
+    val date = cursor.getLong(MediaStore.Images.Media.DATE_ADDED)
     val type = cursor.getInt(MediaStore.Files.FileColumns.MEDIA_TYPE)
     val duration = if (requestType == 1) 0 else cursor.getLong(MediaStore.Video.VideoColumns.DURATION)
     val width = cursor.getInt(MediaStore.MediaColumns.WIDTH)
@@ -248,7 +252,9 @@ object DBUtils : IDBUtils {
     val lng = cursor.getDouble(MediaStore.Images.ImageColumns.LONGITUDE)
     val orientation: Int = cursor.getInt(MediaStore.MediaColumns.ORIENTATION)
 
-    return AssetEntity(id, path, duration, date, width, height, getMediaType(type), displayName, modifiedDate, orientation, lat, lng)
+    val mimeType = cursor.getString(MediaStore.Files.FileColumns.MIME_TYPE)
+
+    return AssetEntity(id, path, duration, date, width, height, getMediaType(type), displayName, modifiedDate, orientation, lat, lng, mimeType = mimeType)
   }
 
   @SuppressLint("Recycle")
@@ -303,7 +309,7 @@ object DBUtils : IDBUtils {
     cacheContainer.clearCache()
   }
 
-  override fun saveImage(context: Context, image: ByteArray, title: String, desc: String): AssetEntity? {
+  override fun saveImage(context: Context, image: ByteArray, title: String, desc: String, relativePath: String?): AssetEntity? {
     val cr = context.contentResolver
     var inputStream = ByteArrayInputStream(image)
 
@@ -336,8 +342,13 @@ object DBUtils : IDBUtils {
     val timestamp = System.currentTimeMillis() / 1000
     refreshInputStream()
 
-    val typeFromStream = URLConnection.guessContentTypeFromStream(inputStream)
-        ?: "image/${File(title).extension}"
+    val typeFromStream: String = if (title.contains(".")) {
+      // title contains file extension, form mimeType from it
+      "image/${File(title).extension}"
+    } else {
+      URLConnection.guessContentTypeFromStream(inputStream) ?: "image/*"
+    }
+
 
     val values = ContentValues().apply {
       put(MediaStore.Files.FileColumns.MEDIA_TYPE, MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE)
@@ -380,7 +391,7 @@ object DBUtils : IDBUtils {
     return getAssetEntity(context, id.toString())
   }
 
-  override fun saveImage(context: Context, path: String, title: String, desc: String): AssetEntity? {
+  override fun saveImage(context: Context, path: String, title: String, desc: String, relativePath: String?): AssetEntity? {
     val inputStream = FileInputStream(path)
     val cr = context.contentResolver
     val timestamp = System.currentTimeMillis() / 1000
@@ -660,7 +671,7 @@ object DBUtils : IDBUtils {
     }
   }
 
-  override fun saveVideo(context: Context, path: String, title: String, desc: String): AssetEntity? {
+  override fun saveVideo(context: Context, path: String, title: String, desc: String, relativePath: String?): AssetEntity? {
     val inputStream = FileInputStream(path)
     val cr = context.contentResolver
     val timestamp = System.currentTimeMillis() / 1000

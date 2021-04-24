@@ -30,8 +30,6 @@ class PhotoManager {
     RequestType type = RequestType.common,
     FilterOptionGroup? filterOption,
   }) async {
-    assert(hasAll != null);
-    assert(onlyAll != null);
     if (onlyAll) {
       assert(hasAll, "If only is true, then the hasAll must be not null.");
     }
@@ -65,7 +63,6 @@ class PhotoManager {
   }
 
   static Future<void> setLog(bool isLog) {
-    assert(isLog != null);
     return _plugin.setLog(isLog);
   }
 
@@ -103,9 +100,8 @@ class PhotoManager {
     required int start,
     required int end,
   }) {
-    assert(entity != null && start != null && end != null);
-    if (end > entity.assetCount!) {
-      end = entity.assetCount!;
+    if (end > entity.assetCount) {
+      end = entity.assetCount;
     }
     return _plugin.getAssetWithRange(
       entity.id,
@@ -161,9 +157,17 @@ class PhotoManager {
   /// see [_NotifyManager]
   static void stopChangeNotify() => _notifyManager.stopHandleNotify();
 
-  static Future<File?> _getFileWithId(String id, {bool isOrigin = false}) async {
+  static Future<File?> _getFileWithId(
+    String id, {
+    bool isOrigin = false,
+    PMProgressHandler? progressHandler,
+  }) async {
     if (Platform.isIOS || Platform.isMacOS || Platform.isAndroid) {
-      final path = await _plugin.getFullFile(id, isOrigin: isOrigin);
+      final path = await _plugin.getFullFile(
+        id,
+        isOrigin: isOrigin,
+        progressHandler: progressHandler,
+      );
       if (path == null) {
         return null;
       }
@@ -176,10 +180,15 @@ class PhotoManager {
     return _plugin.getOriginBytes(id);
   }
 
-  static _getThumbDataWithOption(String id, ThumbOption option) {
+  static _getThumbDataWithOption(
+    String id,
+    ThumbOption option,
+    PMProgressHandler? progressHandler,
+  ) {
     return _plugin.getThumb(
       id: id,
       option: option,
+      progressHandler: progressHandler,
     );
   }
 
@@ -192,9 +201,6 @@ class PhotoManager {
     required AssetPathEntity entity,
     required FilterOptionGroup filterOptionGroup,
   }) async {
-    assert(entity != null);
-    assert(filterOptionGroup != null);
-
     final result = await _plugin.fetchPathProperties(
       entity.id,
       entity.typeInt,
@@ -238,21 +244,27 @@ class PhotoManager {
     await _plugin.clearFileCache();
   }
 
-  /// When set to true, originbytes in Android Q will be cached as a file. When use again, the file will be read.
-  static Future<bool?> setCacheAtOriginBytes(bool cache) =>
+  /// When set to true, origin bytes in Android Q will be cached as a file. When use again, the file will be read.
+  static Future<bool> setCacheAtOriginBytes(bool cache) =>
       _plugin.cacheOriginBytes(cache);
 
-  static Future<Uint8List?> _getOriginBytes(AssetEntity assetEntity) async {
+  static Future<Uint8List?> _getOriginBytes(
+    AssetEntity assetEntity, {
+    PMProgressHandler? progressHandler,
+  }) async {
     assert(Platform.isAndroid || Platform.isIOS || Platform.isMacOS);
     if (Platform.isAndroid) {
       if (await _isAndroidQ()) {
-        return _plugin.getOriginBytes(assetEntity.id!);
+        return _plugin.getOriginBytes(
+          assetEntity.id,
+          progressHandler: progressHandler,
+        );
       } else {
-        return (await assetEntity.originFile)!.readAsBytes();
+        return (await assetEntity.originFile)?.readAsBytes();
       }
     } else if (Platform.isIOS || Platform.isMacOS) {
       final file = await assetEntity.originFile;
-      return file!.readAsBytes();
+      return file?.readAsBytes();
     }
     return null;
   }
@@ -269,10 +281,8 @@ class PhotoManager {
   }
 
   /// Refresh the property of asset.
-  static Future<AssetEntity?> refreshAssetProperties(AssetEntity src) async {
-    assert(src.id != null);
-    final Map<dynamic, dynamic> map =
-        await _plugin.getPropertiesFromAssetEntity(src.id!);
+  static Future<AssetEntity?> refreshAssetProperties(String id) async {
+    final Map? map = await _plugin.getPropertiesFromAssetEntity(id);
 
     final asset = ConvertUtils.convertToAsset(map);
 
@@ -280,19 +290,6 @@ class PhotoManager {
       return null;
     }
 
-    src
-      ..id = asset.id
-      ..createDtSecond = asset.createDtSecond
-      ..width = asset.width
-      ..height = asset.height
-      ..duration = asset.duration
-      ..modifiedDateSecond = asset.modifiedDateSecond
-      ..typeInt = asset.typeInt
-      ..longitude = asset.longitude
-      ..latitude = asset.latitude
-      ..title = asset.title
-      ..relativePath = asset.relativePath;
-
-    return src;
+    return asset;
   }
 }

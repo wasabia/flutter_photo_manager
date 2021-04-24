@@ -2,11 +2,12 @@ part of '../photo_manager.dart';
 
 /// Cached thumbnails for album management.
 class PhotoCachingManager {
-  static PhotoCachingManager? _ins;
-
-  final _plugin = Plugin();
 
   PhotoCachingManager._();
+
+  static late final PhotoCachingManager _ins = PhotoCachingManager._();
+
+  final _plugin = Plugin();
 
   static const ThumbOption defaultOption = const ThumbOption(
     width: 150,
@@ -16,10 +17,8 @@ class PhotoCachingManager {
   );
 
   /// Singleton.
-  factory PhotoCachingManager() {
-    _ins ??= PhotoCachingManager._();
-    return _ins!;
-  }
+
+  factory PhotoCachingManager() => _ins;
 
   // /// Request to cache the photo album's thumbnails.
   // ///
@@ -36,9 +35,7 @@ class PhotoCachingManager {
     required List<AssetEntity> assets,
     ThumbOption option = defaultOption,
   }) async {
-    assert(assets != null);
     assert(assets.isNotEmpty);
-    assert(option != null);
 
     await _plugin.requestCacheAssetsThumb(
       assets.map((e) => e.id!).toList(),
@@ -50,9 +47,7 @@ class PhotoCachingManager {
     required List<String> assetIds,
     ThumbOption option = defaultOption,
   }) async {
-    assert(assetIds != null);
     assert(assetIds.isNotEmpty);
-    assert(option != null);
 
     await _plugin.requestCacheAssetsThumb(
       assetIds,
@@ -61,7 +56,5 @@ class PhotoCachingManager {
   }
 
   /// Cancel all cache request.
-  Future<void> cancelCacheRequest() async {
-    await _plugin.cancelCacheRequests();
-  }
+  Future<void> cancelCacheRequest() => _plugin.cancelCacheRequests();
 }
