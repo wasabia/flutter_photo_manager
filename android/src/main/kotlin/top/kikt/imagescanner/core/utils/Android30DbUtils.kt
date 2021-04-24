@@ -20,6 +20,7 @@ import top.kikt.imagescanner.core.cache.CacheContainer
 import top.kikt.imagescanner.core.entity.AssetEntity
 import top.kikt.imagescanner.core.entity.FilterOption
 import top.kikt.imagescanner.core.entity.GalleryEntity
+import top.kikt.imagescanner.core.utils.AndroidQDBUtils.getString
 import top.kikt.imagescanner.util.LogUtils
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -56,7 +57,7 @@ object Android30DbUtils : IDBUtils {
 
     val selections = "${MediaStore.Images.Media.BUCKET_ID} IS NOT NULL $typeSelection $dateSelection $sizeWhere"
 
-    val cursor = context.contentResolver.query(allUri, galleryKeys, selections, args.toTypedArray(), null)
+    val cursor = context.contentResolver.query(allUri, galleryKeys, selections, args.toTypedArray(), option.orderByCondString())
         ?: return list
 
     LogUtils.logCursor(cursor, BUCKET_ID)
@@ -83,6 +84,11 @@ object Android30DbUtils : IDBUtils {
       val count = countMap[id]!!
 
       val entity = GalleryEntity(id, name, count, requestType, false)
+
+      if (option.containsPathModified) {
+        injectModifiedDate(context, entity)
+      }
+
       list.add(entity)
     }
 
@@ -103,7 +109,7 @@ object Android30DbUtils : IDBUtils {
 
     val selections = "${MediaStore.Images.Media.BUCKET_ID} IS NOT NULL $typeSelection $dateSelection $sizeWhere"
 
-    val cursor = context.contentResolver.query(allUri, galleryKeys, selections, args.toTypedArray(), null)
+    val cursor = context.contentResolver.query(allUri, galleryKeys, selections, args.toTypedArray(), option.orderByCondString())
         ?: return list
 
     cursor.use {
@@ -239,8 +245,10 @@ object Android30DbUtils : IDBUtils {
   private fun convertCursorToAssetEntity(cursor: Cursor): AssetEntity {
     val id = cursor.getString(MediaStore.MediaColumns._ID)
     val path = cursor.getString(MediaStore.MediaColumns.DATA)
-    val date = cursor.getLong(MediaStore.Images.Media.DATE_TAKEN)
+    val date = cursor.getLong(MediaStore.Images.Media.DATE_ADDED)
     val type = cursor.getInt(MEDIA_TYPE)
+
+    val mimeType = cursor.getString(MIME_TYPE)
 
     val duration = if (type == MEDIA_TYPE_IMAGE) 0 else cursor.getLong(MediaStore.Video.VideoColumns.DURATION)
     val width = cursor.getInt(MediaStore.MediaColumns.WIDTH)
@@ -249,7 +257,7 @@ object Android30DbUtils : IDBUtils {
     val modifiedDate = cursor.getLong(MediaStore.MediaColumns.DATE_MODIFIED)
     val orientation: Int = cursor.getInt(MediaStore.MediaColumns.ORIENTATION)
     val relativePath: String = cursor.getString(MediaStore.MediaColumns.RELATIVE_PATH)
-    return AssetEntity(id, path, duration, date, width, height, getMediaType(type), displayName, modifiedDate, orientation, androidQRelativePath = relativePath)
+    return AssetEntity(id, path, duration, date, width, height, getMediaType(type), displayName, modifiedDate, orientation, androidQRelativePath = relativePath, mimeType = mimeType)
   }
 
   override fun getAssetEntity(context: Context, id: String): AssetEntity? {
@@ -370,7 +378,7 @@ object Android30DbUtils : IDBUtils {
     androidQCache.saveAssetCache(context, asset, byteArray, true)
   }
 
-  override fun saveImage(context: Context, image: ByteArray, title: String, desc: String): AssetEntity? {
+  override fun saveImage(context: Context, image: ByteArray, title: String, desc: String, relativePath: String?): AssetEntity? {
     val (width, height) =
         try {
           val bmp = BitmapFactory.decodeByteArray(image, 0, image.count())
@@ -384,7 +392,12 @@ object Android30DbUtils : IDBUtils {
     val cr = context.contentResolver
     val timestamp = System.currentTimeMillis() / 1000
 
-    val typeFromStream = URLConnection.guessContentTypeFromStream(inputStream)
+    val typeFromStream: String = if (title.contains(".")) {
+      // title contains file extension, form mimeType from it
+      "image/${File(title).extension}"
+    } else {
+      URLConnection.guessContentTypeFromStream(inputStream) ?: "image/*"
+    }
 
     val uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
 
@@ -401,6 +414,7 @@ object Android30DbUtils : IDBUtils {
       put(MediaStore.Images.ImageColumns.WIDTH, width)
       put(MediaStore.Images.ImageColumns.HEIGHT, height)
     }
+    if (relativePath != null) values.put(MediaStore.Images.ImageColumns.RELATIVE_PATH, relativePath)
 
     val contentUri = cr.insert(uri, values) ?: return null
     val outputStream = cr.openOutputStream(contentUri)
@@ -417,7 +431,7 @@ object Android30DbUtils : IDBUtils {
     return getAssetEntity(context, id.toString())
   }
 
-  override fun saveImage(context: Context, path: String, title: String, desc: String): AssetEntity? {
+  override fun saveImage(context: Context, path: String, title: String, desc: String, relativePath: String?): AssetEntity? {
     val cr = context.contentResolver
     val timestamp = System.currentTimeMillis() / 1000
     val inputStream = FileInputStream(path)
@@ -449,6 +463,7 @@ object Android30DbUtils : IDBUtils {
       put(MediaStore.Images.ImageColumns.WIDTH, width)
       put(MediaStore.Images.ImageColumns.HEIGHT, height)
     }
+    if (relativePath != null) values.put(MediaStore.Images.ImageColumns.RELATIVE_PATH, relativePath)
 
     val contentUri = cr.insert(uri, values) ?: return null
     val outputStream = cr.openOutputStream(contentUri)
@@ -646,7 +661,7 @@ object Android30DbUtils : IDBUtils {
     }
   }
 
-  override fun saveVideo(context: Context, path: String, title: String, desc: String): AssetEntity? {
+  override fun saveVideo(context: Context, path: String, title: String, desc: String, relativePath: String?): AssetEntity? {
     val cr = context.contentResolver
     val timestamp = System.currentTimeMillis() / 1000
     val inputStream = FileInputStream(path)
@@ -672,6 +687,7 @@ object Android30DbUtils : IDBUtils {
       put(MediaStore.Video.VideoColumns.WIDTH, info.width)
       put(MediaStore.Video.VideoColumns.HEIGHT, info.height)
     }
+    if (relativePath != null) values.put(MediaStore.Video.VideoColumns.RELATIVE_PATH, relativePath)
 
     val contentUri = cr.insert(uri, values) ?: return null
     val outputStream = cr.openOutputStream(contentUri)

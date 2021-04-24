@@ -12,12 +12,16 @@ object ConvertUtils {
     val data = ArrayList<Map<String, Any>>()
 
     for (entity in list) {
-      val element = mapOf(
+      val element = mutableMapOf<String, Any>(
           "id" to entity.id,
           "name" to entity.name,
           "length" to entity.length,
           "isAll" to entity.isAll
       )
+
+      if (entity.modifiedDate != null) {
+        element["modified"] = entity.modifiedDate!!
+      }
 
       if (entity.length > 0) {
         data.add(element)
@@ -33,11 +37,11 @@ object ConvertUtils {
     val data = ArrayList<Map<String, Any?>>()
 
     for (entity in list) {
-      val element = mapOf(
+      val element = hashMapOf(
           "id" to entity.id,
           "duration" to entity.duration / 1000,
           "type" to entity.type,
-          "createDt" to entity.createDt / 1000,
+          "createDt" to entity.createDt,
           "width" to entity.width,
           "height" to entity.height,
           "orientation" to entity.orientation,
@@ -47,6 +51,11 @@ object ConvertUtils {
           "title" to entity.displayName,
           "relativePath" to entity.relativePath
       )
+
+      if (entity.mimeType != null) {
+        element["mimeType"] = entity.mimeType
+      }
+
       data.add(element)
     }
 
@@ -57,11 +66,11 @@ object ConvertUtils {
 
   fun convertToAssetResult(entity: AssetEntity): Map<String, Any?> {
 
-    val data = mapOf(
+    val data = hashMapOf(
         "id" to entity.id,
         "duration" to entity.duration / 1000,
         "type" to entity.type,
-        "createDt" to entity.createDt / 1000,
+        "createDt" to entity.createDt,
         "width" to entity.width,
         "height" to entity.height,
         "modifiedDt" to entity.modifiedDate,
@@ -70,6 +79,10 @@ object ConvertUtils {
         "title" to entity.displayName,
         "relativePath" to entity.relativePath
     )
+
+    if (entity.mimeType != null) {
+      data["mimeType"] = entity.mimeType
+    }
 
     return mapOf(
         "data" to data
@@ -141,7 +154,7 @@ object ConvertUtils {
       val keyIndex = map["type"] as Int
       val asc = map["asc"] as Boolean
 
-      val key = when(keyIndex){
+      val key = when (keyIndex) {
         0 -> MediaStore.MediaColumns.DATE_ADDED
         1 -> MediaStore.MediaColumns.DATE_MODIFIED
         else -> null

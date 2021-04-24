@@ -23,40 +23,57 @@ class Editor {
   ///
   /// in iOS is Recent.
   /// in Android is Picture.
+
+  /// On Android 28 or lower, if the file is located in the external storage, it's path will be used in the MediaStore.
+  /// On Android 29 or above, you can use [relativePath] to specify a RELATIVE_PATH used in the MediaStore.
+  /// The mimeType will either be formed from the title if you pass one, or guessed by the system, which does not always work.
   Future<AssetEntity?> saveImage(
-    Uint8List uint8List, {
+    Uint8List data, {
     String? title,
     String? desc,
+    String? relativePath,
   }) async {
-    return _plugin.saveImage(uint8List, title: title ?? "", desc: desc ?? "");
+    return _plugin.saveImage(data,
+        title: title, desc: desc, relativePath: relativePath);
   }
 
   /// Save image to gallery.
   ///
   /// in iOS is Recent.
-  /// in Android is picture directory .(in android 28 or lower, If the path at the external storage, It will use the path.)
+  /// in Android is picture directory.
+  /// On Android 28 or lower, if the file is located in the external storage, it's path will be used in the MediaStore.
+  /// On Android 29 or above, you can use [relativePath] to specify a RELATIVE_PATH used in the MediaStore.
   Future<AssetEntity?> saveImageWithPath(
     String path, {
-    String title = "",
-    String desc = "",
+    String? title,
+    String? desc,
+    String? relativePath,
   }) async {
-    return _plugin.saveImageWithPath(path, title: title, desc: desc);
+    return _plugin.saveImageWithPath(
+      path,
+      title: title,
+      desc: desc,
+      relativePath: relativePath,
+    );
   }
 
   /// Save video to gallery.
   ///
   /// in iOS is Recent.
-  /// in Android is video directory .(in android 28 or lower, If the path at the external storage, It will use the path.)
+  /// in Android is video directory.
+  /// On Android 28 or lower, if the file is located in the external storage, it's path will be used in the MediaStore.
+  /// On Android 29 or above, you can use [relativePath] to specify a RELATIVE_PATH used in the MediaStore.
   Future<AssetEntity?> saveVideo(
     File file, {
-    String title = "",
-    String desc = "",
-    Duration? duration,
+    String? title,
+    String? desc,
+    String? relativePath,
   }) async {
     return _plugin.saveVideo(
       file,
       title: title,
       desc: desc,
+      relativePath: relativePath,
     );
   }
 
@@ -68,8 +85,6 @@ class Editor {
     required AssetEntity asset,
     required AssetPathEntity pathEntity,
   }) {
-    assert(asset != null);
-    assert(pathEntity != null);
     return _plugin.copyAssetToGallery(asset, pathEntity);
   }
 }
@@ -83,7 +98,7 @@ class IosEditor {
   Future<AssetPathEntity?> createFolder(
     String name, {
     AssetPathEntity? parent,
-  }) {
+  }) async {
     if (parent == null || parent.isAll) {
       return _plugin.iosCreateFolder(name, true, null);
     } else {
@@ -99,7 +114,7 @@ class IosEditor {
   Future<AssetPathEntity?> createAlbum(
     String name, {
     AssetPathEntity? parent,
-  }) {
+  }) async {
     if (parent == null || parent.isAll) {
       return _plugin.iosCreateAlbum(name, true, null);
     } else {
@@ -113,11 +128,6 @@ class IosEditor {
 
   /// The [entity] and [path] isn't null.
   Future<bool> removeInAlbum(AssetEntity entity, AssetPathEntity path) async {
-    if (entity == null || path == null) {
-      assert(entity != null, "");
-      assert(path != null, "");
-      return false;
-    }
     if (path.albumType == 2 || path.isAll) {
       assert(path.albumType == 1, "The path must is album");
       assert(
@@ -131,12 +141,9 @@ class IosEditor {
 
   /// Remove [list]'s items from [path] in batches.
   Future<bool> removeAssetsInAlbum(
-      List<AssetEntity> list, AssetPathEntity path) async {
-    if (list == null || path == null) {
-      assert(list != null, "");
-      assert(path != null, "");
-      return false;
-    }
+    List<AssetEntity> list,
+    AssetPathEntity path,
+  ) async {
     if (list.isEmpty) {
       return false;
     }
@@ -153,20 +160,15 @@ class IosEditor {
 
   /// Delete the [path].
   Future<bool> deletePath(AssetPathEntity path) async {
-    assert(path != null, "The path is not null.");
-    if (path == null) {
-      return false;
-    }
-
     return _plugin.iosDeleteCollection(path);
   }
 
-  Future<bool?> favoriteAsset(
-      {required AssetEntity entity, required bool favorite}) async {
-    assert(entity != null);
-    assert(favorite != null);
-    final result = await _plugin.favoriteAsset(entity.id!, favorite);
-    if (result == true) {
+  Future<bool> favoriteAsset({
+    required AssetEntity entity,
+    required bool favorite,
+  }) async {
+    final result = await _plugin.favoriteAsset(entity.id, favorite);
+    if (result) {
       entity.isFavorite = favorite;
     }
     return result;
@@ -174,7 +176,7 @@ class IosEditor {
 }
 
 class AndroidEditor {
-  Future<bool?> moveAssetToAnother({
+  Future<bool> moveAssetToAnother({
     required AssetEntity entity,
     required AssetPathEntity target,
   }) async {
@@ -182,9 +184,6 @@ class AndroidEditor {
       assert(Platform.isAndroid);
       return false;
     }
-
-    assert(entity != null);
-    assert(target != null);
 
     return _plugin.androidMoveAssetToPath(entity, target);
   }

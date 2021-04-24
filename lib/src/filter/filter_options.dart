@@ -3,29 +3,53 @@ import '../type.dart';
 
 /// Filter option for get asset.
 ///
-/// 筛选选项, 可以分别设置图片类型和视频类型对应的[FilterOption]
+/// 筛选选项, 可以分别设置图片类型和视频类型对应的 [FilterOption]
 ///
 /// See [FilterOption]
 class FilterOptionGroup {
-  /// An empty option
-  FilterOptionGroup.empty();
+  static final _defaultOrderOption = OrderOption(
+    type: OrderOptionType.updateDate,
+    asc: false,
+  );
 
-  FilterOptionGroup() {
-    setOption(AssetType.image, FilterOption());
-    setOption(AssetType.video, FilterOption());
-    setOption(AssetType.audio, FilterOption());
-    addOrderOption(OrderOption(
-      type: OrderOptionType.createDate,
-      asc: false,
-    ));
+  FilterOptionGroup({
+    FilterOption imageOption = const FilterOption(),
+    FilterOption videoOption = const FilterOption(),
+    FilterOption audioOption = const FilterOption(),
+    bool containsEmptyAlbum = false,
+    bool containsPathModified = false,
+    DateTimeCond? createTimeCond,
+    DateTimeCond? updateTimeCond,
+    List<OrderOption> orders = const [],
+  }) {
+    _map[AssetType.image] = imageOption;
+    _map[AssetType.video] = videoOption;
+    _map[AssetType.audio] = audioOption;
+    this.containsEmptyAlbum = containsEmptyAlbum;
+    this.containsPathModified = containsPathModified;
+    this.createTimeCond = createTimeCond ?? DateTimeCond.def();
+    this.updateTimeCond = createTimeCond ??
+        DateTimeCond.def().copyWith(
+          ignore: true,
+        );
+    this.orders.addAll(orders);
   }
+
+  FilterOptionGroup.empty();
 
   final Map<AssetType, FilterOption> _map = {};
 
   /// 是否包含空相册
   ///
   /// Whether to include an empty album
-  var containsEmptyAlbum = false;
+  bool containsEmptyAlbum = false;
+
+  /// If true, the [AssetPathEntity] will return with the last modified time.
+  ///
+  /// See [AssetPathEntity.lastModified]
+  ///
+  /// This is a performance consuming option. Only if you really need it, it is recommended to set it to true.
+  bool containsPathModified = false;
 
   @Deprecated('Please use createTimeCond.')
   DateTimeCond get dateTimeCond => createTimeCond;
@@ -40,9 +64,8 @@ class FilterOptionGroup {
     ignore: true,
   );
 
-  FilterOption getOption(AssetType type) {
-    return _map[type]!;
-  }
+
+  FilterOption getOption(AssetType type) => _map[type]!;
 
   void setOption(AssetType type, FilterOption option) {
     _map[type] = option;
@@ -55,29 +78,36 @@ class FilterOptionGroup {
   }
 
   void merge(FilterOptionGroup other) {
-    assert(other != null, 'Cannot merge null.');
     for (final AssetType type in _map.keys) {
       _map[type] = _map[type]!.merge(other.getOption(type));
     }
     this.containsEmptyAlbum = other.containsEmptyAlbum;
+    this.containsPathModified = other.containsPathModified;
   }
 
   Map<String, dynamic> toMap() {
     Map<String, dynamic> result = {};
     if (_map.containsKey(AssetType.image)) {
-      result["image"] = _map[AssetType.image]!.toMap();
+      result["image"] = getOption(AssetType.image).toMap();
     }
     if (_map.containsKey(AssetType.video)) {
-      result["video"] = _map[AssetType.video]!.toMap();
+      result["video"] = getOption(AssetType.video).toMap();
     }
     if (_map.containsKey(AssetType.audio)) {
-      result["audio"] = _map[AssetType.audio]!.toMap();
+      result["audio"] = getOption(AssetType.audio).toMap();
     }
 
     result["createDate"] = createTimeCond.toMap();
     result["updateDate"] = updateTimeCond.toMap();
     result['containsEmptyAlbum'] = containsEmptyAlbum;
-    result['orders'] = orders.map((e) => e.toMap()).toList();
+    result['containsPathModified'] = containsPathModified;
+
+    final ordersList = List<OrderOption>.of(orders);
+    if (ordersList.isEmpty) {
+      ordersList.add(_defaultOrderOption);
+    }
+
+    result['orders'] = ordersList.map((e) => e.toMap()).toList();
 
     return result;
   }
@@ -89,6 +119,8 @@ class FilterOptionGroup {
     DateTimeCond? createTimeCond,
     DateTimeCond? updateTimeCond,
     bool? containsEmptyAlbum,
+
+    bool? containsPathModified,
     List<OrderOption>? orders,
   }) {
     imageOption ??= _map[AssetType.image];
@@ -99,6 +131,7 @@ class FilterOptionGroup {
     updateTimeCond ??= this.updateTimeCond;
 
     containsEmptyAlbum ??= this.containsEmptyAlbum;
+    containsPathModified ??= this.containsPathModified;
 
     orders ??= this.orders;
 
@@ -112,6 +145,7 @@ class FilterOptionGroup {
     result.updateTimeCond = updateTimeCond;
 
     result.containsEmptyAlbum = containsEmptyAlbum;
+    result.containsPathModified = containsPathModified;
 
     result.orders.addAll(orders);
 
@@ -159,11 +193,10 @@ class FilterOption {
 
   /// Merge a [FilterOption] into another.
   FilterOption merge(FilterOption other) {
-    assert(other != null, 'Cannot merge null.');
     return FilterOption(
-      needTitle: other.needTitle ?? this.needTitle,
-      sizeConstraint: other.sizeConstraint ?? this.sizeConstraint,
-      durationConstraint: other.durationConstraint ?? this.durationConstraint,
+      needTitle: other.needTitle,
+      sizeConstraint: other.sizeConstraint,
+      durationConstraint: other.durationConstraint,
     );
   }
 
@@ -266,8 +299,7 @@ class DateTimeCond {
     required this.min,
     required this.max,
     this.ignore = false,
-  })  : assert(min != null),
-        assert(max != null);
+  });
 
   factory DateTimeCond.def() {
     return DateTimeCond(
@@ -277,9 +309,9 @@ class DateTimeCond {
   }
 
   DateTimeCond copyWith({
-    final DateTime? min,
-    final DateTime? max,
-    final bool? ignore,
+    DateTime? min,
+    DateTime? max,
+    bool? ignore,
   }) {
     return DateTimeCond(
       min: min ?? this.min,
@@ -324,7 +356,4 @@ class OrderOption {
   }
 }
 
-enum OrderOptionType {
-  createDate,
-  updateDate,
-}
+enum OrderOptionType { createDate, updateDate }

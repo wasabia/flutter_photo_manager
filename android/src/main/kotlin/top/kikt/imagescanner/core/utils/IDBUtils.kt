@@ -9,6 +9,7 @@ import android.provider.MediaStore
 import android.provider.MediaStore.Files.FileColumns.*
 import android.provider.MediaStore.VOLUME_EXTERNAL
 import androidx.exifinterface.media.ExifInterface
+import top.kikt.imagescanner.core.PhotoManager
 import top.kikt.imagescanner.core.cache.CacheContainer
 import top.kikt.imagescanner.core.entity.AssetEntity
 import top.kikt.imagescanner.core.entity.DateCond
@@ -36,8 +37,9 @@ interface IDBUtils {
         MediaStore.MediaColumns.WIDTH, // 宽
         MediaStore.MediaColumns.HEIGHT, // 高
         MediaStore.MediaColumns.ORIENTATION, // 角度
+        DATE_ADDED,
         MediaStore.MediaColumns.DATE_MODIFIED, // 修改时间
-        MediaStore.MediaColumns.MIME_TYPE, // 高
+        MediaStore.MediaColumns.MIME_TYPE, // mime type
         MediaStore.MediaColumns.DATE_TAKEN //日期
     )
 
@@ -53,7 +55,7 @@ interface IDBUtils {
         MediaStore.MediaColumns.HEIGHT, // 高
         MediaStore.MediaColumns.ORIENTATION, // 角度
         MediaStore.MediaColumns.DATE_MODIFIED, // 修改时间
-        MediaStore.MediaColumns.MIME_TYPE, // 高
+        MediaStore.MediaColumns.MIME_TYPE, // mime type
         MediaStore.MediaColumns.DURATION //时长
     )
 
@@ -149,11 +151,11 @@ interface IDBUtils {
     return assetEntity.getUri()
   }
 
-  fun saveImage(context: Context, image: ByteArray, title: String, desc: String): AssetEntity?
+  fun saveImage(context: Context, image: ByteArray, title: String, desc: String, relativePath: String?): AssetEntity?
 
-  fun saveImage(context: Context, path: String, title: String, desc: String): AssetEntity?
+  fun saveImage(context: Context, path: String, title: String, desc: String, relativePath: String?): AssetEntity?
 
-  fun saveVideo(context: Context, path: String, title: String, desc: String): AssetEntity?
+  fun saveVideo(context: Context, path: String, title: String, desc: String, relativePath: String?): AssetEntity?
 
   fun exists(context: Context, id: String): Boolean {
     val columns = arrayOf(_ID)
@@ -397,7 +399,7 @@ interface IDBUtils {
 
     val key = arrayOf(_ID, MEDIA_TYPE)
     val idSelection = ids.joinToString(",") { "?" }
-    val selection = "$_ID in ($idSelection)";
+    val selection = "$_ID in ($idSelection)"
     val cursor = context.contentResolver.query(allUri, key, selection, ids.toTypedArray(), null)
         ?: return emptyList()
 
@@ -453,7 +455,7 @@ interface IDBUtils {
 
     val key = arrayOf(_ID, MEDIA_TYPE, DATA)
     val idSelection = ids.joinToString(",") { "?" }
-    val selection = "$_ID in ($idSelection)";
+    val selection = "$_ID in ($idSelection)"
     val cursor = context.contentResolver.query(allUri, key, selection, ids.toTypedArray(), null)
         ?: return emptyList()
 
@@ -478,5 +480,27 @@ interface IDBUtils {
     return list
   }
 
+  fun injectModifiedDate(context: Context, entity: GalleryEntity) {
+    val modifiedDate = getPathModifiedDate(context, entity.id)
+    entity.modifiedDate = modifiedDate
+  }
 
+  @SuppressLint("Recycle")
+  fun getPathModifiedDate(context: Context, pathId: String): Long {
+    val columns = arrayOf(MediaStore.MediaColumns.DATE_MODIFIED)
+    val sortOrder = "${MediaStore.MediaColumns.DATE_MODIFIED} desc"
+    val cursor =
+        if (pathId == PhotoManager.ALL_ID) {
+          context.contentResolver.query(allUri, columns, null, null, sortOrder)
+        } else {
+          context.contentResolver.query(allUri, columns, "${MediaStore.MediaColumns.BUCKET_ID} = ?", arrayOf(pathId), sortOrder)
+              ?: return 0
+        }
+    cursor?.use {
+      if (cursor.moveToNext()) {
+        return cursor.getLong(MediaStore.MediaColumns.DATE_MODIFIED)
+      }
+    }
+    return 0
+  }
 }

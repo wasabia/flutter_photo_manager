@@ -79,7 +79,7 @@ class PhotoManager(private val context: Context) {
     val gId = if (galleryId == ALL_ID) "" else galleryId
     return dbUtils.getAssetFromGalleryIdRange(context, gId, start, end, type, option)
   }
-  
+
   fun getThumb(id: String, option: ThumbLoadOption, resultHandler: ResultHandler) {
     val width = option.width
     val height = option.height
@@ -156,11 +156,21 @@ class PhotoManager(private val context: Context) {
           for (item in this) {
             count += item.length
           }
-          GalleryEntity(ALL_ID, "Recent", count, type, true)
+          GalleryEntity(ALL_ID, "Recent", count, type, true).apply {
+            if (option.containsPathModified) {
+              dbUtils.injectModifiedDate(context, this)
+            }
+          }
         }
       }
     }
-    return dbUtils.getGalleryEntity(context, id, type, option)
+    val galleryEntity = dbUtils.getGalleryEntity(context, id, type, option)
+
+    if (galleryEntity != null && option.containsPathModified) {
+      dbUtils.injectModifiedDate(context, galleryEntity)
+    }
+
+    return galleryEntity
   }
 
   fun getFile(id: String, isOrigin: Boolean, resultHandler: ResultHandler) {
@@ -168,19 +178,19 @@ class PhotoManager(private val context: Context) {
     resultHandler.reply(path)
   }
 
-  fun saveImage(image: ByteArray, title: String, description: String): AssetEntity? {
-    return dbUtils.saveImage(context, image, title, description)
+  fun saveImage(image: ByteArray, title: String, description: String, relativePath: String?): AssetEntity? {
+    return dbUtils.saveImage(context, image, title, description, relativePath)
   }
 
-  fun saveImage(path: String, title: String, description: String): AssetEntity? {
-    return dbUtils.saveImage(context, path, title, description)
+  fun saveImage(path: String, title: String, description: String, relativePath: String?): AssetEntity? {
+    return dbUtils.saveImage(context, path, title, description, relativePath)
   }
 
-  fun saveVideo(path: String, title: String, desc: String): AssetEntity? {
+  fun saveVideo(path: String, title: String, desc: String, relativePath: String?): AssetEntity? {
     if (!File(path).exists()) {
       return null
     }
-    return dbUtils.saveVideo(context, path, title, desc)
+    return dbUtils.saveVideo(context, path, title, desc, relativePath)
   }
 
   fun assetExists(id: String, resultHandler: ResultHandler) {

@@ -1,7 +1,18 @@
 # CHANGELOG
 
 - [CHANGELOG](#changelog)
-  - [0.6.0-dev.7](#060-dev7)
+  - [1.1.4](#114)
+  - [1.1.3](#113)
+  - [1.1.2](#112)
+  - [1.1.1](#111)
+  - [1.1.0](#110)
+  - [1.0.6](#106)
+  - [1.0.4](#104)
+  - [1.0.3](#103)
+  - [1.0.2](#102)
+  - [1.0.1](#101)
+  - [1.0.0](#100)
+  - [0.6.0](#060)
   - [0.5.8](#058)
   - [0.5.7](#057)
   - [0.5.6](#056)
@@ -45,7 +56,59 @@
   - [0.0.2 update readme](#002-update-readme)
   - [0.0.1](#001)
 
-## 0.6.0-dev.7
+## 1.1.4
+
+Merged [#478](https://github.com/CaiJingLong/flutter_photo_manager/pull/478)
+
+## 1.1.3
+
+Merged the code of macos and ios.
+
+## 1.1.2
+
+- Updated the code in the macOS part.
+
+## 1.1.1
+
+- Fix: `thumbWithSize` of `AssetEntity`.
+
+## 1.1.0
+
+- Feature: `modified` of `AssetPathEntity`.
+- Feature: Update constructor of `FilterOptionGroup`.
+
+- Fix: Order option of the `FilterOptionGroup`.
+
+## 1.0.6
+
+- Add relative path when saving files to the MediaStore on Android 29+ (#462)
+- Fix deleteWithIds typecast issue with Android 29- (#460)
+
+## 1.0.4
+
+- Add mime type for android.
+
+## 1.0.3
+
+- Fix serious code usage issue in convert utils.
+
+## 1.0.2
+
+- Improve the constructor for `AssetEntity`.
+
+## 1.0.1
+
+- Fix
+  - orientation bug.
+
+## 1.0.0
+
+Breaking change:
+
+- Migrate to null safety.
+- Correct type in `PMRequestState` .
+
+## 0.6.0
 
 - Feature
 
@@ -56,11 +119,13 @@
   - Experimental
     - Preload image (Use `PhotoCachingManager` api.)
   - Add `OrderOption` as sort condition. The option default value is order by create date desc;
+  - Support icloud asset progress.
 
 - Fixes
   - [#362](https://github.com/CaiJingLong/flutter_photo_manager/issues/362)
   - Delete assets in androidQ.
   - Edited image data in iOS.
+  - Fix delete error in androidR.
 
 Breaking change:
 
