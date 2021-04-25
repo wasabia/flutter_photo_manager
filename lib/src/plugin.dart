@@ -253,7 +253,7 @@ class Plugin with BasePlugin, IosPlugin, AndroidPlugin {
 
   Future<LatLng> getLatLngAsync(AssetEntity assetEntity) async {
     if (Platform.isAndroid) {
-      String _v = await getSystemVersion() ?? "";
+      String _v = await getSystemVersion();
       final version = int.parse(_v);
       if (version >= 29) {
         final Map? map = await _channel.invokeMethod(
@@ -314,7 +314,7 @@ class Plugin with BasePlugin, IosPlugin, AndroidPlugin {
     return ConvertUtils.convertPath(
       items,
       type: pathEntity.typeInt,
-      optionGroup: pathEntity.filterOption!,
+      optionGroup: pathEntity.filterOption,
     );
   }
 

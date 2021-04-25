@@ -38,7 +38,7 @@ class PhotoCachingManager {
     assert(assets.isNotEmpty);
 
     await _plugin.requestCacheAssetsThumb(
-      assets.map((e) => e.id!).toList(),
+      assets.map((e) => e.id).toList(),
       option,
     );
   }

@@ -134,7 +134,7 @@ class AssetPathEntity {
   }
 
   /// all of asset, It is recommended to use the latest api (pagination) [getAssetListPaged].
-  Future<List<AssetEntity>> get assetList => getAssetListPaged(0, assetCount!);
+  Future<List<AssetEntity>> get assetList => getAssetListPaged(0, assetCount);
 
   /// In android, always return empty list.
   Future<List<AssetPathEntity>> getSubPathList() async {
@@ -376,7 +376,7 @@ class AssetEntity {
     }
 
     return PhotoManager._getThumbDataWithOption(
-      id!,
+      id,
       option,
       progressHandler,
     );
@@ -408,7 +408,7 @@ class AssetEntity {
   }
 
   /// If the asset is deleted, return false.
-  Future<bool?> get exists => PhotoManager._assetExistsWithId(id!);
+  Future<bool> get exists => PhotoManager._assetExistsWithId(id);
 
   /// The url is provided to some video player.
   /// Such as [flutter_ijkplayer](https://pub.dev/packages/flutter_ijkplayer)

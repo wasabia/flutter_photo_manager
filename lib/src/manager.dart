@@ -91,7 +91,7 @@ class PhotoManager {
       page: page,
       pageCount: pageCount,
       type: entity.typeInt,
-      optionGroup: entity.filterOption!,
+      optionGroup: entity.filterOption,
     );
   }
 
@@ -108,7 +108,7 @@ class PhotoManager {
       typeInt: entity.typeInt,
       start: start,
       end: end,
-      optionGroup: entity.filterOption!,
+      optionGroup: entity.filterOption,
     );
   }
 
@@ -192,7 +192,7 @@ class PhotoManager {
     );
   }
 
-  static Future<bool?> _assetExistsWithId(String id) {
+  static Future<bool> _assetExistsWithId(String id) {
     return _plugin.assetExistsWithId(id);
   }
 
@@ -204,7 +204,7 @@ class PhotoManager {
     final result = await _plugin.fetchPathProperties(
       entity.id,
       entity.typeInt,
-      entity.filterOption!,
+      entity.filterOption,
     );
     if (result == null) {
       return null;
@@ -214,7 +214,7 @@ class PhotoManager {
       return ConvertUtils.convertPath(
         result,
         type: entity.typeInt,
-        optionGroup: entity.filterOption!,
+        optionGroup: entity.filterOption,
       )[0];
     } else {
       return null;
@@ -231,7 +231,7 @@ class PhotoManager {
       return false;
     }
     final systemVersion = await _plugin.getSystemVersion();
-    return int.parse(systemVersion!) >= 29;
+    return int.parse(systemVersion) >= 29;
   }
 
   /// Get system version
