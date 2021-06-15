@@ -14,6 +14,9 @@
 #import "PMProgressHandler.h"
 #import "PMConverter.h"
 
+#import <Photos/Photos.h>
+#import <PhotosUI/PhotosUI.h>
+
 @implementation PMPlugin {
   BOOL ignoreCheckPermission;
   NSObject <FlutterPluginRegistrar> *privateRegistrar;
@@ -43,16 +46,11 @@
   ResultHandler *handler = [ResultHandler handlerWithResult:result];
   PMManager *manager = self.manager;
 
-  if ([call.method isEqualToString:@"requestPermission"]) {
-    [PHPhotoLibrary requestAuthorization:^(PHAuthorizationStatus status) {
-      BOOL auth = PHAuthorizationStatusAuthorized == status;
-      [manager setAuth:auth];
-      if (auth) {
-        [handler reply:@1];
-      } else {
-        [handler reply:@0];
-      }
-    }];
+  if ([call.method isEqualToString:@"requestPermissionExtend"]) {
+    int requestAccessLevel = [call.arguments[@"iosAccessLevel"] intValue];
+    [self handlePermission:manager handler:handler requestAccessLevel:requestAccessLevel];
+  } else if ([call.method isEqualToString:@"presentLimited"]) {
+    [self presentLimited];
   } else if ([call.method isEqualToString:@"clearFileCache"]) {
     [manager clearFileCache];
     [handler reply:@1];
@@ -83,6 +81,84 @@
     }
   }
 }
+
+-(void)replyPermssionResult:(ResultHandler*) handler status:(PHAuthorizationStatus)status{
+    BOOL auth = PHAuthorizationStatusAuthorized == status;
+    [self.manager setAuth:auth];
+    [handler reply:@(status)];
+}
+
+#if TARGET_OS_IOS
+#if __IPHONE_14_0
+
+- (void) handlePermission:(PMManager *)manager handler:(ResultHandler*) handler requestAccessLevel:(int)requestAccessLevel {
+    if (@available(iOS 14, *)) {
+        [PHPhotoLibrary requestAuthorizationForAccessLevel:requestAccessLevel handler:^(PHAuthorizationStatus status) {
+          [self replyPermssionResult:handler status:status];
+        }];
+    } else {
+        [PHPhotoLibrary requestAuthorization:^(PHAuthorizationStatus status) {
+          [self replyPermssionResult:handler status:status];
+        }];
+    }
+}
+
+-(UIViewController*) getCurrentViewController {
+    UIViewController *ctl = UIApplication.sharedApplication.keyWindow.rootViewController;
+    if(ctl){
+        UIViewController *result = ctl;
+        while(1){
+            if(result.presentedViewController) {
+                result = result.presentedViewController;
+            } else {
+                return result;
+            }
+        }
+    }
+    return nil;
+}
+
+-(void)presentLimited {
+    if (@available(iOS 14, *)) {
+        UIViewController* ctl = [self getCurrentViewController];
+        if(!ctl){
+            return;
+        }
+        [PHPhotoLibrary.sharedPhotoLibrary presentLimitedLibraryPickerFromViewController: ctl];
+    }
+}
+
+#else
+
+- (void) handlePermission:(PMManager *)manager handler:(ResultHandler*) handler requestAccessLevel:(int)requestAccessLevel {
+    [PHPhotoLibrary requestAuthorization:^(PHAuthorizationStatus status) {
+      [self replyPermssionResult:handler status:status];
+    }];
+}
+
+-(void)presentLimited {
+}
+
+#endif
+#endif
+
+#if TARGET_OS_OSX
+- (void) handlePermission:(PMManager *)manager handler:(ResultHandler*) handler requestAccessLevel:(int)requestAccessLevel {
+    if (@available(macOS 11.0, *)) {
+        [PHPhotoLibrary requestAuthorizationForAccessLevel:requestAccessLevel handler:^(PHAuthorizationStatus status) {
+            [self replyPermssionResult:handler status:status];
+        }];
+    } else {
+        [PHPhotoLibrary requestAuthorization:^(PHAuthorizationStatus status) {
+          [self replyPermssionResult:handler status:status];
+        }];
+    }
+}
+
+-(void)presentLimited {
+}
+
+#endif
 
 - (void)runInBackground:(dispatch_block_t)block {
   dispatch_async(dispatch_get_global_queue(0, 0), block);

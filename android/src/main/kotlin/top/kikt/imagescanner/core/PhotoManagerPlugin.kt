@@ -3,14 +3,17 @@ package top.kikt.imagescanner.core
 import android.Manifest
 import android.app.Activity
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Handler
+import androidx.annotation.RequiresApi
 import com.bumptech.glide.Glide
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import top.kikt.imagescanner.core.entity.AssetEntity
 import top.kikt.imagescanner.core.entity.FilterOption
+import top.kikt.imagescanner.core.entity.PermissionResult
 import top.kikt.imagescanner.core.entity.ThumbLoadOption
 import top.kikt.imagescanner.core.utils.ConvertUtils
 import top.kikt.imagescanner.core.utils.IDBUtils
@@ -122,8 +125,7 @@ class PhotoManagerPlugin(
         true
       }
       "cacheOriginBytes" -> {
-        val cacheOriginBytes = call.arguments<Boolean>()
-        PhotoManagerPlugin.cacheOriginBytes = cacheOriginBytes
+        cacheOriginBytes = call.arguments<Boolean>()
         resultHandler.reply(cacheOriginBytes)
         true
       }
@@ -167,8 +169,8 @@ class PhotoManagerPlugin(
       permissionsListener = object : PermissionsListener {
         override fun onDenied(deniedPermissions: MutableList<String>, grantedPermissions: MutableList<String>) {
           LogUtils.info("onDenied call.method = ${call.method}")
-          if (call.method == "requestPermission") {
-            resultHandler.reply(0)
+          if (call.method == "requestPermissionExtend") {
+            resultHandler.reply(PermissionResult.Denied.value)
           } else {
             if (grantedPermissions.containsAll(arrayListOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE))) {
               LogUtils.info("onGranted call.method = ${call.method}")
@@ -188,12 +190,25 @@ class PhotoManagerPlugin(
 
     val permissions = arrayListOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE)
 
-    if (needLocationPermissions && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+    if (needLocationPermissions && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && haveManifestMediaLocation(applicationContext)) {
       permissions.add(Manifest.permission.ACCESS_MEDIA_LOCATION)
     }
 
     utils.getPermissions(activity, 3001, permissions)
   }
+
+
+  @RequiresApi(Build.VERSION_CODES.Q)
+  private fun haveManifestMediaLocation(context: Context): Boolean {
+//    Debug.waitForDebugger()
+    val applicationInfo = context.applicationInfo
+    val packageInfo = context.packageManager.getPackageInfo(
+        applicationInfo.packageName,
+        PackageManager.GET_PERMISSIONS
+    )
+    return packageInfo.requestedPermissions.contains(Manifest.permission.ACCESS_MEDIA_LOCATION)
+  }
+
 
   private fun replyPermissionError(resultHandler: ResultHandler) {
     resultHandler.replyError("Request for permission failed.", "User denied permission.", null)
@@ -201,7 +216,7 @@ class PhotoManagerPlugin(
 
   private fun onHandlePermissionResult(call: MethodCall, resultHandler: ResultHandler, haveLocationPermission: Boolean) {
     when (call.method) {
-      "requestPermission" -> resultHandler.reply(1)
+      "requestPermissionExtend" -> resultHandler.reply(PermissionResult.Authorized.value)
       "getGalleryList" -> {
         if (Build.VERSION.SDK_INT >= 29) {
           notifyChannel.setAndroidQExperimental(true)
@@ -254,7 +269,7 @@ class PhotoManagerPlugin(
           photoManager.requestCache(ids, option, resultHandler)
         }
       }
-      "cancelCacheRequests"->{
+      "cancelCacheRequests" -> {
         runOnBackground {
           photoManager.cancelCacheRequests()
         }
@@ -340,7 +355,7 @@ class PhotoManagerPlugin(
             val uris = ids.map {
               photoManager.getUri(it)
             }.toList()
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            if (Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
               deleteManager.deleteInApi30(uris, resultHandler)
             }
           } else {

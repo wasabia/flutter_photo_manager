@@ -40,9 +40,10 @@ class Plugin with BasePlugin, IosPlugin, AndroidPlugin {
     );
   }
 
-  /// request permission.
-  Future<bool> requestPermission() async {
-    return (await _channel.invokeMethod('requestPermission')) == 1;
+  Future<int> requestPermissionExtend(
+      PermisstionRequestOption requestOption) async {
+    return await _channel.invokeMethod(
+        'requestPermissionExtend', requestOption.toMap());
   }
 
   /// Use pagination to get album content.
@@ -273,7 +274,7 @@ class Plugin with BasePlugin, IosPlugin, AndroidPlugin {
 
 
   Future<bool> cacheOriginBytes(bool cache) async {
-    return (await _channel.invokeMethod('cacheOriginBytes')) == true;
+    return (await _channel.invokeMethod("cacheOriginBytes", cache)) == true;
   }
 
   Future<String?> getTitleAsync(AssetEntity assetEntity) async {
@@ -391,6 +392,12 @@ class Plugin with BasePlugin, IosPlugin, AndroidPlugin {
       'ids': ids,
       'option': option.toMap(),
     });
+  }
+
+  Future<void> presentLimited() async {
+    if (Platform.isIOS) {
+      await _channel.invokeMethod('presentLimited');
+    }
   }
 }
 

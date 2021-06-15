@@ -29,6 +29,8 @@ If you just need a picture selector, you can choose to use [photo](https://pub.d
   - [Usage](#usage)
     - [Configure your flutter project to use the plugin](#configure-your-flutter-project-to-use-the-plugin)
     - [request permission](#request-permission)
+      - [About `requestPermissionExtend`](#about-requestpermissionextend)
+      - [Limit photos](#limit-photos)
     - [you get all of asset list (gallery)](#you-get-all-of-asset-list-gallery)
       - [FilterOption](#filteroption)
     - [Get asset list from `AssetPathEntity`](#get-asset-list-from-assetpathentity)
@@ -58,6 +60,7 @@ If you just need a picture selector, you can choose to use [photo](https://pub.d
     - [Android Q (android10 , API 29)](#android-q-android10--api-29)
     - [Android R (android 11, API30)](#android-r-android-11-api30)
     - [glide](#glide)
+    - [Remove Media Location permission](#remove-media-location-permission)
   - [common issues](#common-issues)
     - [ios build error](#ios-build-error)
   - [Some articles about to use this library](#some-articles-about-to-use-this-library)
@@ -95,14 +98,32 @@ Please click the link below.
 You must get the user's permission on android/ios.
 
 ```dart
-var result = await PhotoManager.requestPermission();
-if (result) {
+var result = await PhotoManager.requestPermissionExtend();
+if (result.isAuth) {
     // success
 } else {
     // fail
     /// if result is fail, you can call `PhotoManager.openSetting();`  to open android/ios applicaton's setting to get permission
 }
 ```
+
+#### About `requestPermissionExtend`
+
+In iOS14, Apple inclue "LimitedPhotos Library" to iOS.
+
+We need use the `PhotoManager.requestPermissionExtend()` to request permission.
+
+The method will return `PermissionState`. See it in [document of Apple](https://developer.apple.com/documentation/photokit/phauthorizationstatus?language=objc).
+
+So, because of compatibility, Android also recommends using this method to request permission, use `state.isAuth`, use a to be equivalent to the previous method `requestPermission`.
+
+#### Limit photos
+
+Because apple inclue "LimitedPhotos Library" to iOS.
+
+Let the user select the visible image for app again, we can use `PhotoManager.presentLimited()` to repick again.
+
+The method is only valid when iOS14 and user authorization mode is `PermissionState.limited`, other platform will ignore.
 
 ### you get all of asset list (gallery)
 
@@ -127,7 +148,7 @@ List<AssetPathEntity> list = await PhotoManager.getAssetPathList();
 | updateDateTimeCond | Update date filter                                                                                                                                                                        |
 | orders             | The sort option, use `addOrderOption`.                                                                                                                                                    |
 
-Example see [filter_option_page.dart](https://github.com/CaiJingLong/flutter_photo_manager/example/lib/page/filter_option_page.dart).
+Example see [filter_option_page.dart](https://github.com/CaiJingLong/flutter_photo_manager/blob/master/example/lib/page/filter_option_page.dart).
 
 Most classes of FilterOption support `copyWith`.
 
@@ -282,9 +303,9 @@ PhotoCachingManager().requestCacheAssets(
 And, if you want to stop, call `PhotoCachingManager().cancelCacheRequest();`
 
 Usually, when we preview an album, we use thumbnails.
-In flutter, becauseListView.builder,GridView.builderIt's all rendering that loads, but sometimes we might want to pre-load some pictures in advance to make them display faster.
+In flutter, because `ListView.builder` and `GridView.builder` rendering that loads, but sometimes we might want to pre-load some pictures in advance to make them display faster.
 
-Now, I try to create a caching image manager (just like [PHCachingImageManager](https://developer.apple.com/documentation/photokit/phcachingimagemanager?language=objc)) to do it. In IOS, I use the system API directly, and Android will use glide and use glide's file cache to complete this step
+Now, I try to create a caching image manager (just like [PHCachingImageManager](https://developer.apple.com/documentation/photokit/phcachingimagemanager?language=objc)) to do it. In IOS, I use the system API directly, and Android will use glide and use glide's file cache to complete this step.
 This function is completely optional.
 
 #### Delete item
@@ -491,6 +512,21 @@ rootProject.allprojects {
 ```
 
 And, if you want to use ProGuard, you can see the [ProGuard of Glide](https://github.com/bumptech/glide#proguard).
+
+### Remove Media Location permission
+
+Android contains [ACCESS_MEDIA_LOCATION](https://developer.android.com/training/data-storage/shared/media#media-location-permission) permission by default.
+
+This permission is introduced in Android Q. If your app doesn't need this permission, you need to add the following node to the Android manifest in your app.
+
+```xml
+<uses-permission
+  android:name="android.permission.ACCESS_MEDIA_LOCATION"
+  tools:node="remove"
+  />
+```
+
+See code in the [example](https://github.com/CaiJingLong/flutter_photo_manager/blob/e083c7d5f4eb5f5b355a75357c0a0c3e2d534b2e/example/android/app/src/main/AndroidManifest.xml#L11-L14).
 
 ## common issues
 

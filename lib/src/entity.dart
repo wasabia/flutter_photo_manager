@@ -336,6 +336,18 @@ class AssetEntity {
       return Future.sync(() => null);
     }
 
+    if (Platform.isIOS || Platform.isMacOS) {
+      return thumbDataWithOption(
+        ThumbOption.ios(
+          width: width,
+          height: height,
+          format: format,
+          quality: quality,
+        ),
+        progressHandler: progressHandler,
+      );
+    }
+
     return thumbDataWithOption(
       ThumbOption(
         width: width,

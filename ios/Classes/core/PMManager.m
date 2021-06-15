@@ -20,7 +20,7 @@
   BOOL __isAuth;
   PMCacheContainer *cacheContainer;
 
-  PHCachingImageManager *cachingManager;
+  PHCachingImageManager *__cachingManager;
 }
 
 - (instancetype)init {
@@ -28,7 +28,6 @@
   if (self) {
     __isAuth = NO;
     cacheContainer = [PMCacheContainer new];
-    cachingManager = [PHCachingImageManager new];
   }
 
   return self;
@@ -40,6 +39,14 @@
 
 - (void)setAuth:(BOOL)auth {
   __isAuth = auth;
+}
+
+- (PHCachingImageManager *)cachingManager {
+    if (__cachingManager == nil) {
+        __cachingManager = [PHCachingImageManager new];
+    }
+    
+    return __cachingManager;
 }
 
 - (NSArray<PMAssetPathEntity *> *)getGalleryList:(int)type hasAll:(BOOL)hasAll onlyAll:(BOOL)onlyAll option:(PMFilterOptionGroup *)option {
@@ -100,6 +107,9 @@
 }
 
 - (void)logCollections:(PHFetchResult *)collections option:(PHFetchOptions *)option {
+  if(!PMLogUtils.sharedInstance.isLog){
+      return;
+  }
   for (PHCollection *phCollection in collections) {
     if ([phCollection isMemberOfClass:[PHAssetCollection class]]) {
       PHAssetCollection *collection = (PHAssetCollection *) phCollection;
@@ -375,11 +385,15 @@
                       return;
                     }
                     NSData *imageData = [PMImageUtil convertToData:result formatType:option.format quality:option.quality];
-
-                    id data = [self.converter convertData:imageData];
-                    [handler reply:data];
-
+                    if (imageData) {
+                      id data = [self.converter convertData:imageData];
+                      [handler reply:data];
+                    } else {
+                      [handler reply: nil];
+                    }
+      
                     [self notifySuccess:progressHandler];
+                    
                   }];
 
 }
@@ -411,7 +425,7 @@
   NSArray<PHAssetResource *> *resources =
       [PHAssetResource assetResourcesForAsset:asset];
   // find asset
-  NSLog(@"The asset has %lu resources.", (unsigned long) resources.count);
+  [PMLogUtils.sharedInstance info: [NSString stringWithFormat:@"The asset has %lu resources.", (unsigned long) resources.count] ];
   PHAssetResource *dstResource;
   if (resources.lastObject && resources.lastObject.type == PHAssetResourceTypeVideo) {
     dstResource = resources.lastObject;
@@ -473,24 +487,23 @@
                       attributes:@{}
                            error:nil];
 
-  [path appendFormat:@"%@/%d_%@", @".video", (int)asset.modificationDate.timeIntervalSince1970 ,filename];
-  
+  [path appendFormat:@"%@/%@", @".video", filename];
   PHVideoRequestOptions *options = [PHVideoRequestOptions new];
-  options.version = PHVideoRequestOptionsVersionCurrent;
   if ([manager fileExistsAtPath:path]) {
     [[PMLogUtils sharedInstance]
         info:[NSString stringWithFormat:@"read cache from %@", path]];
     [handler reply:path];
     return;
   }
-    
+
+
   [self notifyProgress:progressHandler progress:0 state:PMProgressStatePrepare];
   [options setProgressHandler:^(double progress, NSError *error, BOOL *stop,
-                                NSDictionary *info) {
+      NSDictionary *info) {
     if (progress == 1.0) {
-      [self notifyProgress:progressHandler progress:progress state:PMProgressStateLoading];
+      [self fetchFullSizeVideo:asset handler:handler progressHandler:nil];
     }
-    
+
     if (error) {
       [self notifyProgress:progressHandler progress:progress state:PMProgressStateFailed];
       [progressHandler deinit];
@@ -502,36 +515,35 @@
   }];
 
   [options setNetworkAccessAllowed:YES];
+
   [[PHImageManager defaultManager]
-   requestExportSessionForVideo:asset options:options exportPreset:AVAssetExportPresetHighestQuality resultHandler:^(AVAssetExportSession *_Nullable exportSession, NSDictionary *_Nullable info) {
-    BOOL downloadFinish = [PMManager isDownloadFinish:info];
-    
-    if (!downloadFinish) {
-      NSLog(@"Asset download fail: %@");
-      [handler reply:nil];
-      return;
-    }
-    
-    if (exportSession) {
-      exportSession.shouldOptimizeForNetworkUse = YES;
-      exportSession.outputFileType = AVFileTypeMPEG4;
-      exportSession.outputURL = [NSURL fileURLWithPath:path];
-      [exportSession exportAsynchronouslyWithCompletionHandler:^{
-        if ([exportSession status] == AVAssetExportSessionStatusCompleted) {
-          [handler reply:path];
-        } else if ([exportSession status] == AVAssetExportSessionStatusFailed) {
-          NSLog(@"Export session failed: %@", exportSession.error);
-          [handler reply:nil];
-        } else if ([exportSession status] == AVAssetExportSessionStatusCancelled) {
-          NSLog(@"Export session cancelled: %@", exportSession.error);
-          [handler reply:nil];
-        }
-      }];
-      [self notifySuccess:progressHandler];
-    } else {
-      [handler reply:nil];
-    }
-  }];
+      requestAVAssetForVideo:asset
+                     options:options
+               resultHandler:^(AVAsset *_Nullable asset,
+                   AVAudioMix *_Nullable audioMix,
+                   NSDictionary *_Nullable info) {
+                 BOOL downloadFinish = [PMManager isDownloadFinish:info];
+
+                 if (!downloadFinish) {
+                   return;
+                 }
+
+                 NSString *preset = AVAssetExportPresetHighestQuality;
+                 AVAssetExportSession *exportSession =
+                     [AVAssetExportSession exportSessionWithAsset:asset
+                                                       presetName:preset];
+                 if (exportSession) {
+                   exportSession.outputFileType = AVFileTypeMPEG4;
+                   exportSession.outputURL = [NSURL fileURLWithPath:path];
+                   [exportSession exportAsynchronouslyWithCompletionHandler:^{
+                     [handler reply:path];
+                   }];
+
+                   [self notifySuccess:progressHandler];
+                 } else {
+                   [handler reply:nil];
+                 }
+               }];
 }
 
 - (NSString *)makeAssetOutputPath:(PHAsset *)asset isOrigin:(Boolean)isOrigin {
@@ -543,7 +555,7 @@
                                            attributes:@{}
                                                 error:nil];
 
-  NSLog(@"cache path = %@", dirPath);
+  [PMLogUtils.sharedInstance info: [NSString stringWithFormat:@"cache path = %@", dirPath]];
 
 //  NSString *title = [asset title];
   NSMutableString *path = [NSMutableString stringWithString:dirPath];
@@ -565,7 +577,7 @@
   [options setProgressHandler:^(double progress, NSError *error, BOOL *stop,
       NSDictionary *info) {
     if (progress == 1.0) {
-      [self notifyProgress:progressHandler progress:progress state:PMProgressStateLoading];
+      [self fetchFullSizeImageFile:asset resultHandler:handler progressHandler:nil];
     }
 
     if (error) {
@@ -582,23 +594,29 @@
                      targetSize:PHImageManagerMaximumSize
                     contentMode:PHImageContentModeDefault
                         options:options
-                  resultHandler:^(UIImage *_Nullable image,
-                                  NSDictionary *_Nullable info) {
-    if ([handler isReplied]) {
-      return;
-    }
-    
-    BOOL downloadFinished = [PMManager isDownloadFinish:info];
-    if (!downloadFinished) {
-      [handler reply:nil];
-      return;
-    }
-    
-    NSString *path = [self writeFullFileWithAssetId:asset imageData:UIImageJPEGRepresentation(image, 1.0)];
-    
-    [self notifySuccess:progressHandler];
-    [handler reply:path];
-  }];
+                  resultHandler:^(PMImage *_Nullable image,
+                      NSDictionary *_Nullable info) {
+
+                    BOOL downloadFinished = [PMManager isDownloadFinish:info];
+                    if (!downloadFinished) {
+                      return;
+                    }
+
+                    if ([handler isReplied]) {
+                      return;
+                    }
+
+                    NSData *data = [PMImageUtil convertToData:image formatType:PMThumbFormatTypeJPEG quality:1.0];
+                
+                    if (data) {
+                      NSString *path = [self writeFullFileWithAssetId:asset imageData: data];
+                      [handler reply:path];
+                    } else {
+                      [handler reply:nil];
+                    }
+
+                    [self notifySuccess:progressHandler];
+                  }];
 }
 
 - (NSString *)writeFullFileWithAssetId:(PHAsset *)asset imageData:(NSData *)imageData {
@@ -666,8 +684,8 @@
                        NSLog(@"error = %@", error);
                        [handler reply:nil];
                      } else {
-                       [self notifySuccess:progressHandler];
                        [handler reply:path];
+                       [self notifySuccess:progressHandler];
                      }
                    }];
 }
@@ -767,7 +785,7 @@
     [cond appendString:durationCond];
     [args addObjectsFromArray:durationArgs];
 
-    NSLog(@"duration = %.2f ~ %.2f", [durationArgs[0] floatValue], [durationArgs[1] floatValue]);
+    [PMLogUtils.sharedInstance info: [NSString stringWithFormat: @"duration = %.2f ~ %.2f", [durationArgs[0] floatValue], [durationArgs[1] floatValue]]];
 
     [cond appendString:@" ) "];
   }
@@ -854,7 +872,7 @@
       }
    completionHandler:^(BOOL success, NSError *error) {
      if (success) {
-       NSLog(@"create asset : id = %@", assetId);
+       [PMLogUtils.sharedInstance info: [NSString stringWithFormat:@"create asset : id = %@", assetId]];
        block([self getAssetEntity:assetId]);
      } else {
        NSLog(@"create fail");
@@ -883,7 +901,7 @@
       }
    completionHandler:^(BOOL success, NSError *error) {
      if (success) {
-       NSLog(@"create asset : id = %@", assetId);
+       [PMLogUtils.sharedInstance info: [NSString stringWithFormat:@"create asset : id = %@", assetId]];
        block([self getAssetEntity:assetId]);
      } else {
        NSLog(@"create fail");
@@ -917,7 +935,7 @@
       }
    completionHandler:^(BOOL success, NSError *error) {
      if (success) {
-       NSLog(@"create asset : id = %@", assetId);
+       [PMLogUtils.sharedInstance info: [NSString stringWithFormat:@"create asset : id = %@", assetId]];
        block([self getAssetEntity:assetId]);
      } else {
        NSLog(@"create fail, error: %@", error);
@@ -940,7 +958,7 @@
     [PHCachingImageManager.defaultManager requestAVAssetForVideo:phAsset options:nil resultHandler:^(AVAsset *asset, AVAudioMix *audioMix, NSDictionary *info) {
       if ([asset isKindOfClass:[AVURLAsset class]]) {
         NSURL *url = ((AVURLAsset *) asset).URL;
-        NSLog(@"The asset asset URL = %@", url);
+        [PMLogUtils.sharedInstance info: [NSString stringWithFormat:@"The asset asset URL = %@", url]];
         [handler reply:url.absoluteString];
       } else {
         [handler replyError:@"cannot get videoUrl"];
@@ -1287,9 +1305,9 @@
   NSError *err;
 
   [fm removeItemAtPath:imagePath error:&err];
-  NSLog(@"remove cache file %@, error: %@", imagePath, err);
+  [PMLogUtils.sharedInstance info: [NSString stringWithFormat:@"remove cache file %@, error: %@", imagePath, err]];
   [fm removeItemAtPath:videoPath error:&err];
-  NSLog(@"remove cache file %@, error: %@", videoPath, err);
+  [PMLogUtils.sharedInstance info: [NSString stringWithFormat:@"remove cache file %@, error: %@", videoPath, err]];
 }
 
 #pragma mark cache thumb
@@ -1306,11 +1324,11 @@
   options.resizeMode = options.resizeMode;
   options.deliveryMode = option.deliveryMode;
 
-  [cachingManager startCachingImagesForAssets:array targetSize:[option makeSize] contentMode:option.contentMode options:options];
+  [self.cachingManager startCachingImagesForAssets:array targetSize:[option makeSize] contentMode:option.contentMode options:options];
 }
 
 - (void)cancelCacheRequests {
-  [cachingManager stopCachingImagesForAllAssets];
+  [self.cachingManager stopCachingImagesForAllAssets];
 }
 
 - (void)notifyProgress:(NSObject <PMProgressHandlerProtocol> *)handler progress:(double)progress state:(PMProgressState)state {
